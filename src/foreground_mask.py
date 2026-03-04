@@ -114,6 +114,8 @@ def resolve_profile(args: argparse.Namespace, input_path: Path) -> tuple[float, 
     if args.downscale is not None:
         downscale = args.downscale
     elif clip_pixels >= 3840 * 2160:
+        # Large 4K clips are pushed onto a faster path so the default profile
+        # remains practical on workstation-class hardware.
         downscale = 0.25
     elif clip_pixels >= 1920 * 1080:
         downscale = 0.5
@@ -123,6 +125,8 @@ def resolve_profile(args: argparse.Namespace, input_path: Path) -> tuple[float, 
     if args.no_stabilize:
         stabilize = False
     else:
+        # ECC alignment is effective but expensive, so auto mode only enables it
+        # on smaller inputs where runtime remains predictable.
         stabilize = clip_pixels < 1920 * 1080
 
     return downscale, stabilize

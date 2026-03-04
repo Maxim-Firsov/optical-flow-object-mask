@@ -189,6 +189,8 @@ def warp_mask_to_current(mask: np.ndarray, warp_matrix: np.ndarray | None) -> np
 
 def create_foreground_model() -> cv2.BackgroundSubtractor:
     """Create the primary foreground model."""
+    # MOG2 models each pixel as a mixture of Gaussians so persistent background
+    # modes are retained while transient moving regions are emitted as foreground.
     return cv2.createBackgroundSubtractorMOG2(
         history=MOG2_HISTORY,
         varThreshold=MOG2_VAR_THRESHOLD,
@@ -200,6 +202,8 @@ def clean_binary_mask(mask: np.ndarray) -> np.ndarray:
     """Denoise and connect a binary mask."""
     small_kernel = np.ones((SMALL_KERNEL, SMALL_KERNEL), dtype=np.uint8)
     large_kernel = np.ones((LARGE_KERNEL, LARGE_KERNEL), dtype=np.uint8)
+    # Median blur removes speckle noise; opening removes isolated artifacts;
+    # closing reconnects fragmented foreground regions.
     cleaned = cv2.medianBlur(mask, 5)
     cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_OPEN, small_kernel)
     cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_CLOSE, large_kernel)
@@ -246,6 +250,8 @@ def build_motion_seed(
     threshold: float,
 ) -> np.ndarray:
     """Build a motion seed from stabilized frame differencing."""
+    # Frame differencing provides a second opinion beyond background subtraction,
+    # which helps suppress static false positives from the MOG2 model alone.
     delta = cv2.absdiff(prev_gray, curr_gray)
     delta = cv2.GaussianBlur(delta, (5, 5), 0)
     delta_threshold = max(6, int(round(threshold * 6)))
@@ -262,6 +268,8 @@ def blend_with_history(current_mask: np.ndarray, previous_ema: np.ndarray | None
         return current
 
     history = previous_ema * (1.0 - ema)
+    # Historical support is clipped to a dilation of the current mask so temporal
+    # smoothing fills small holes without dragging large foreground ghosts forward.
     constrained_history = np.minimum(
         history,
         cv2.dilate(current, np.ones((LARGE_KERNEL, LARGE_KERNEL), dtype=np.uint8)).astype(np.float32),
@@ -276,6 +284,8 @@ def build_grabcut_seed_mask(coarse_mask: np.ndarray) -> np.ndarray:
         trimap[:, :] = cv2.GC_BGD
         return trimap
 
+    # GrabCut works best with a trimap that separates definite foreground from
+    # probable foreground and background, so the coarse matte is expanded and eroded.
     outer = cv2.dilate(
         coarse_mask,
         np.ones((LARGE_KERNEL * 2 + 1, LARGE_KERNEL * 2 + 1), dtype=np.uint8),
@@ -374,6 +384,8 @@ def score_component(
         return None
 
     overlap_ratio = float(motion_overlap / max(area, 1))
+    # The score is heuristic rather than learned: larger, denser, more convex
+    # regions with stronger motion support are preferred as candidate subjects.
     score = (area * 0.01) + (fill_ratio * 2.0) + (solidity * 1.5) + (overlap_ratio * 3.0)
     return ComponentCandidate(mask=mask, area=area, score=score)
 
@@ -480,6 +492,8 @@ class MotionMaskProcessor:
         first_gray = prepare_gray(first_frame)
         state = ProcessorState(prev_gray=first_gray)
         warmup_frame = first_frame if roi is None else first_frame[roi[1] : roi[1] + roi[3], roi[0] : roi[0] + roi[2]]
+        # A full-learning-rate warmup seeds the background model from the first frame
+        # before incremental updates begin on subsequent frames.
         self.foreground_model.apply(warmup_frame, learningRate=1.0)
         processed_frames = 0
 
@@ -498,6 +512,8 @@ class MotionMaskProcessor:
                 if self.config.stabilize:
                     warp_matrix = estimate_ecc_warp(state.prev_gray, current_gray)
 
+                # The pipeline combines motion differencing and background subtraction:
+                # differencing emphasizes change, while MOG2 supplies a region prior.
                 aligned_gray = warp_to_previous(current_gray, warp_matrix)
                 motion_seed_aligned = build_motion_seed(state.prev_gray, aligned_gray, self.config.threshold)
                 motion_seed = warp_mask_to_current(motion_seed_aligned, warp_matrix)
@@ -520,6 +536,8 @@ class MotionMaskProcessor:
                     self.config.keep_blobs,
                     self.config.min_area,
                 )
+                # GrabCut and edge cleanup refine the coarse selected region into a matte
+                # that is better suited to export as a mask or overlay.
                 selected_mask = refine_mask_with_grabcut(model_frame, selected_mask)
 
                 history_mask = blend_with_history(selected_mask, state.ema_mask, self.config.ema)
