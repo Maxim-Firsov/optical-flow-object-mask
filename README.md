@@ -16,7 +16,7 @@ The pipeline is designed for generic MP4 foreground extraction rather than one s
 ## Usage
 
 ```powershell
-python -m src.optical_flow_mask --input data\demo.mp4
+python -m src.foreground_mask --input data\demo.mp4
 ```
 
 Useful options:
@@ -30,7 +30,7 @@ Useful options:
 
 ## Repo layout
 
-- `src/optical_flow_mask.py`: CLI entry point
+- `src/foreground_mask.py`: CLI entry point
 - `src/motion_mask_pipeline.py`: reusable processing pipeline
 - `data/`: local demo video inputs
 - `tests/`: unit tests
