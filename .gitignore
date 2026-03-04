@@ -15,3 +15,11 @@ Thumbs.db
 # Outputs
 outputs/
 *.log
+
+outputs/
+
+
+# Large media
+*.mp4
+*.mov
+
