@@ -76,7 +76,7 @@ Observed output metadata:
 ## Design Decisions
 
 - `auto` is the default profile because a 4K-safe path that completes reliably is more valuable than an expensive default that times out.
-- The pipeline writes `run_metadata.json` so reviewers can see exactly what configuration produced a given output.
+- The pipeline writes `run_metadata.json` so each output can be tied to a specific processing configuration.
 - The implementation favors deterministic classical CV steps over opaque learned models, which makes the behavior easier to inspect and discuss.
 
 ## Limitations
@@ -85,7 +85,7 @@ Observed output metadata:
 - The quality profile may be expensive on large 4K footage depending on hardware.
 - Output quality depends on scene composition and foreground/background contrast.
 
-## How To Run
+## Running The Project
 
 ```powershell
 python -m pip install -r requirements.txt
