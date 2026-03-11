@@ -1,6 +1,6 @@
 # Foreground Matting Video Mask
 
-Video-processing showcase that generates an editor-friendly foreground mask and an overlay preview from an input clip. The project is positioned as a classical computer-vision pipeline rather than a deep-learning matte model.
+Video-processing tool that generates a foreground mask and an overlay preview from an input clip. The implementation uses a classical computer-vision pipeline rather than a deep-learning matte model.
 
 ## Problem Statement
 
