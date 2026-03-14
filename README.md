@@ -88,7 +88,7 @@ Observed output metadata:
 ## Running The Project
 
 ```powershell
-python -m pip install -r requirements.txt
+python -m pip install -e .
 python -m src.foreground_mask --input data\demo.mp4 --out-dir outputs\demo_auto --ema 0.2 --keep-blobs 1
 python -m unittest discover -s tests
 ```
